@@ -40,5 +40,5 @@ Mayaから[chatgpt_maya.py](chatgpt_maya.py)を実行するとUIが表示され�
 * リセットボタンを押すかウィンドウを閉じるまでは、直前までの会話を記憶した状態になります。
 * ログボタンを押すとScriptEditorに会話ログが出力されます。
 
-![example1](.images\example1.png)
-![example2](.images\example2.png)
+![example1](.images/example1.png)
+![example2](.images/example2.png)
