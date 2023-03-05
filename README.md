@@ -1,5 +1,5 @@
 # ChatGPT_Maya
-MayaからChatGPT APIを呼び出し、Pythonスクリプトを生成・実行させるGUIです。
+MayaからChatGPT API（[gpt-3.5-turbo](https://platform.openai.com/docs/guides/chat)）を呼び出し、Pythonスクリプトを生成・実行させるGUIです。  
 
 テスト環境 :
 * Maya 2023 (Python3.9.7)
@@ -42,3 +42,7 @@ Mayaから[chatgpt_maya.py](chatgpt_maya.py)を実行するとUIが表示され�
 
 ![example1](.images/example1.png)
 ![example2](.images/example2.png)
+
+## link
+* [ChatGPT API を使用してMayaを（Pythonスクリプトで）操作してもらう - Qiita](https://qiita.com/akasaki1211/items/34d0f89e0ae2c6efaf48)
+* [ChatGPT APIを使ってAIキャラクターを作ってみる！ - Qiita](https://qiita.com/sakasegawa/items/db2cff79bd14faf2c8e0)
