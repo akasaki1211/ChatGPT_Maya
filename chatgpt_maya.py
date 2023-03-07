@@ -11,6 +11,9 @@ openai.api_key = os.getenv("OPENAI_API_KEY")
 
 SYSTEM_SETTINGS = u"""質問に対して、MayaのPythonスクリプトを書いてください。
 スクリプト以外の文章は短めにまとめてください。
+pythonのコードブロックは必ず ```python で開始してください。
+Mayaに標準でインストールされていないパッケージやモジュールは使用しないでください。
+スクリプトを書くために情報が不足している場合は適宜質問してください。
 """
 
 def completion(new_message_text:str, settings_text:str = '', past_messages:list = []):
@@ -132,7 +135,7 @@ class ChatGPT_Maya(object):
         sep = cmds.separator(h=10, st='in')
         self.ai_comment = cmds.scrollField(h=150, ed=False, ww=True, tx='')
         self.scripts = cmds.optionMenu(l='Scripts:', cc=self.change_script)
-        self.script_field = cmds.cmdScrollFieldExecuter(st='python')
+        self.script_field = cmds.cmdScrollFieldExecuter(st='python', sln=True)
         self.exec_button = cmds.button(label=u'スクリプト実行', h=30, c=self.exec_script)
         
         pad = 5
