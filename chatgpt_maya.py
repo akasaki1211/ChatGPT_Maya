@@ -95,6 +95,10 @@ class ChatGPT_Maya(object):
 
     def call(self, *args):
         user_input = cmds.scrollField(self.input_field, q=True, tx=True)
+
+        # 入力をScriptEditorに出力
+        print('//'*30)
+        print(user_input)
         
         # APIコール
         if self.at_first:
@@ -125,43 +129,34 @@ class ChatGPT_Maya(object):
     
     def create_window(self, *args):
         cmds.window(title=u'ChatGPTがPythonスクリプトを書くよ！', w=500, h=600, sizeable=True)
-        form = cmds.formLayout()
+
+        cmds.paneLayout( configuration='horizontal3', paneSize=[[1,1,10], [2,100,30], [3,100,60]])
+
+        pad = 5
+        
+        form1 = cmds.formLayout()
         
         self.reset_button = cmds.button(label=u'リセット', c=self.reset_session)
         self.show_log_button = cmds.button(label=u'ログ表示', c=self.show_log)
-        self.input_field = cmds.scrollField(h=60, ed=True, ww=True, tx='', ec=self.call)
+        self.input_field = cmds.scrollField(ed=True, ww=True, tx='', ec=self.call)
         self.send_button = cmds.button(label=u'送信', h=30, c=self.call)
         self.auto_exec = cmds.checkBox(label=u'スクリプト自動実行', v=True)
-        sep = cmds.separator(h=10, st='in')
-        self.ai_comment = cmds.scrollField(h=150, ed=False, ww=True, tx='')
-        self.scripts = cmds.optionMenu(l='Scripts:', cc=self.change_script)
-        self.script_field = cmds.cmdScrollFieldExecuter(st='python', sln=True)
-        self.exec_button = cmds.button(label=u'スクリプト実行', h=30, c=self.exec_script)
         
-        pad = 5
-        cmds.formLayout(form, e=True, 
+        cmds.formLayout(form1, e=True, 
             attachForm=[
                 (self.reset_button, 'top', pad), (self.reset_button, 'left', pad),
                 (self.show_log_button, 'top', pad), (self.show_log_button, 'right', pad), 
                 (self.input_field, 'left', pad), (self.input_field, 'right', pad), 
-                (self.send_button, 'left', pad), 
-                (self.auto_exec, 'right', pad),
-                (sep, 'left', pad), (sep, 'right', pad), 
-                (self.ai_comment, 'left', pad), (self.ai_comment, 'right', pad), 
-                (self.scripts, 'left', pad), 
-                (self.script_field, 'left', pad), (self.script_field, 'right', pad), 
-                (self.exec_button, 'left', pad), (self.exec_button, 'right', pad), (self.exec_button, 'bottom', pad)
+                (self.send_button, 'left', pad), (self.send_button, 'bottom', pad), 
+                (self.auto_exec, 'right', pad), (self.auto_exec, 'bottom', pad)
             ],
             attachControl=[
-                (self.input_field, 'top', pad, self.reset_button),
-                (self.send_button, 'top', pad, self.input_field),
-                (self.auto_exec, 'top', pad, self.input_field),
-                (sep, 'top', pad, self.send_button),
-                (self.ai_comment, 'top', pad, sep),
-                (self.scripts, 'top', pad, self.ai_comment),
-                (self.script_field, 'top', pad, self.scripts), (self.script_field, 'bottom', pad, self.exec_button)
+                (self.input_field, 'top', pad, self.reset_button), (self.input_field, 'bottom', pad, self.send_button)
             ],
-            attachNone=[(self.exec_button, 'top')],
+            attachNone=[
+                (self.send_button, 'top'), 
+                (self.auto_exec, 'top')
+            ],
             attachPosition=[
                 (self.reset_button, 'right', pad, 50), 
                 (self.show_log_button, 'left', pad, 50), 
@@ -169,6 +164,34 @@ class ChatGPT_Maya(object):
                 (self.auto_exec, 'left', pad, 75)
             ]
         )
+
+        cmds.setParent('..')
+
+        self.ai_comment = cmds.scrollField(ed=False, ww=True, tx='')
+        
+        cmds.setParent('..')
+
+        form3 = cmds.formLayout()
+        
+        self.scripts = cmds.optionMenu(l='Scripts:', cc=self.change_script)
+        self.script_field = cmds.cmdScrollFieldExecuter(st='python', sln=True)
+        self.exec_button = cmds.button(label=u'スクリプト実行', h=30, c=self.exec_script)
+        
+        cmds.formLayout(form3, e=True, 
+            attachForm=[
+                (self.scripts, 'left', pad), (self.scripts, 'top', pad), 
+                (self.script_field, 'left', pad), (self.script_field, 'right', pad), 
+                (self.exec_button, 'left', pad), (self.exec_button, 'right', pad), (self.exec_button, 'bottom', pad)
+            ],
+            attachControl=[
+                (self.script_field, 'top', pad, self.scripts), (self.script_field, 'bottom', pad, self.exec_button)
+            ],
+            attachNone=[
+                (self.exec_button, 'top')
+            ]
+        )
+
+        cmds.setParent('..')
 
         cmds.showWindow()
 
