@@ -16,52 +16,60 @@ Mayaに標準でインストールされていないパッケージやモジュ�
 スクリプトを書くために情報が不足している場合は適宜質問してください。
 """
 
-def completion(new_message_text:str, settings_text:str = '', past_messages:list = []):
-    if len(past_messages) == 0 and len(settings_text) != 0:
-        system = {"role": "system", "content": settings_text}
-        past_messages.append(system)
-
-    new_message = {"role": "user", "content": new_message_text}
-    past_messages.append(new_message)
-
-    result = openai.ChatCompletion.create(
-        model="gpt-3.5-turbo",
-        messages=past_messages
-    )
-    message_text = result.choices[0].message.content
-    response_message = {"role": "assistant", "content": message_text}
-    past_messages.append(response_message)
-    
-    return message_text, past_messages
-
-def decompose_response(txt:str):
-    pattern = r"```python([\s\S]*?)```"
-    
-    code_list = re.findall(pattern, txt)
-    for i in range(int(len(code_list))):
-        code_list[i] = re.sub('\A[\r?\n]', '', code_list[i])
-        code_list[i] = re.sub('[\r?\n]\Z', '', code_list[i])
-    
-    comment = re.sub(pattern, '', txt)
-    comment = re.sub('[\r?\n]+', '\n', comment)
-    comment = re.sub('[\r?\n]\Z', '', comment)
-    
-    return comment, code_list
-
 class ChatGPT_Maya(object):
 
     def __init__(self):
         self.system_settings = SYSTEM_SETTINGS
         self.message_log = []
-        self.at_first = True
-
         self.code_list = []
 
         self.create_window()
+    
+    def completion(self, 
+                new_message_text:str, 
+                settings_text:str = '', 
+                stream=True):
+        
+        if len(self.message_log) == 0 and len(settings_text) != 0:
+            system = {"role": "system", "content": settings_text}
+            self.message_log.append(system)
+
+        new_message = {"role": "user", "content": new_message_text}
+        self.message_log.append(new_message)
+
+        result = openai.ChatCompletion.create(
+            model="gpt-3.5-turbo",
+            messages=self.message_log, 
+            stream=stream
+        )
+        
+        message_text = "" 
+        for chunk in result:
+            if chunk:
+                content = chunk['choices'][0]['delta'].get('content')
+                if content:
+                    message_text += content
+                    yield message_text
+        else:
+            self.message_log.append({'role': 'assistant', 'content': message_text})
+            return message_text
+
+    def decompose_response(self, txt:str):
+        pattern = r"```python([\s\S]*?)```"
+        
+        code_list = re.findall(pattern, txt)
+        for i in range(int(len(code_list))):
+            code_list[i] = re.sub('\A[\r?\n]', '', code_list[i])
+            code_list[i] = re.sub('[\r?\n]\Z', '', code_list[i])
+        
+        comment = re.sub(pattern, '', txt)
+        comment = re.sub('[\r?\n]+', '\n', comment)
+        comment = re.sub('[\r?\n]\Z', '', comment)
+        
+        return comment, code_list
 
     def reset_session(self, *args):
         self.message_log = []
-        self.at_first = True
         self.code_list = []
 
         self.update_scripts()
@@ -101,11 +109,9 @@ class ChatGPT_Maya(object):
         print(user_input)
         
         # APIコール
-        if self.at_first:
-            message_text, self.message_log = completion(user_input, self.system_settings, [])
-            self.at_first = False
-        else:
-            message_text, self.message_log = completion(user_input, '', self.message_log)
+        for message_text in self.completion(user_input, '' if self.message_log else self.system_settings):
+            cmds.scrollField(self.ai_comment, e=True, tx=message_text)
+            cmds.refresh()
 
         # 返答全文をScriptEditorに出力
         print('//'*30)
@@ -113,7 +119,7 @@ class ChatGPT_Maya(object):
         print('//'*30)
 
         # 返答を分解
-        comment, self.code_list = decompose_response(message_text)
+        comment, self.code_list = self.decompose_response(message_text)
         
         # Pythonコード以外の部分をai_commentに表示
         cmds.scrollField(self.ai_comment, e=True, tx=comment)
