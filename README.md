@@ -43,6 +43,11 @@ Mayaから[chatgpt_maya.py](chatgpt_maya.py)を実行するとUIが表示され�
 ![example1](.images/example1.png)
 ![example2](.images/example2.png)
 
-## link
+## リンク
+### 解説, サンプル
 * [ChatGPT API を使用してMayaを（Pythonスクリプトで）操作してもらう - Qiita](https://qiita.com/akasaki1211/items/34d0f89e0ae2c6efaf48)
+* [サンプル(Twitter)](https://twitter.com/akasaki1211/status/1632704327340150787)
+
+### コード参考
 * [ChatGPT APIを使ってAIキャラクターを作ってみる！ - Qiita](https://qiita.com/sakasegawa/items/db2cff79bd14faf2c8e0)
+* [【Python】ChatGPT APIでウェブサイト版のように返答を逐次受け取る方法 - Qiita](https://qiita.com/Cartelet/items/cfc07fc499b6ebbc7dde)
