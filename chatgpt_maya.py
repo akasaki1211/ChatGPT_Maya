@@ -2,12 +2,15 @@
 import os
 import re
 import json
+from datetime import datetime
 
 import openai
 
 from maya import cmds
 
 openai.api_key = os.getenv("OPENAI_API_KEY")
+
+LOG_DIR = os.getenv("TEMP")
 
 #SYSTEM_SETTINGS = u"""質問に対して、MayaのPythonスクリプトを書いてください。
 #スクリプト以外の文章は短めにまとめてください。
@@ -25,11 +28,15 @@ class ChatGPT_Maya(object):
 
     def __init__(self):
         self.system_settings = SYSTEM_SETTINGS
-        self.message_log = []
-        self.code_list = []
-
+        
+        self.init_variables()
         self.create_window()
     
+    def init_variables(self, *args):
+        self.message_log = []
+        self.session_id = datetime.now().strftime('session_%y%m%d_%H%M%S')
+        self.code_list = []
+
     def completion(self, 
                 new_message_text:str, 
                 settings_text:str='', 
@@ -74,9 +81,8 @@ class ChatGPT_Maya(object):
         return comment, code_list
 
     def reset_session(self, *args):
-        self.message_log = []
-        self.code_list = []
-
+        self.init_variables()
+        
         self.update_scripts()
 
         cmds.scrollField(self.input_field, e=True, tx='')
@@ -91,6 +97,14 @@ class ChatGPT_Maya(object):
             print(log['role'] + ' :\n')
             print(log['content'])
         print('--'*30)
+    
+    def export_log(self, *args):
+        log_file_path = os.path.join(LOG_DIR, self.session_id + '.json')
+        try:
+            with open(log_file_path, 'w', encoding='utf-8-sig') as f:
+                json.dump(self.message_log, f, indent=4, ensure_ascii=False)
+        except:
+            pass
 
     def update_scripts(self, *args):
         menu_items = cmds.optionMenu(self.scripts, q=True, ill=True)
@@ -117,6 +131,9 @@ class ChatGPT_Maya(object):
         for message_text in self.completion(user_input, '' if self.message_log else self.system_settings):
             cmds.scrollField(self.ai_comment, e=True, tx=message_text)
             cmds.refresh()
+        
+        # ログ出力
+        self.export_log()
 
         # 返答全文をScriptEditorに出力
         print('//'*30)
