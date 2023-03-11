@@ -9,12 +9,17 @@ from maya import cmds
 
 openai.api_key = os.getenv("OPENAI_API_KEY")
 
-SYSTEM_SETTINGS = u"""質問に対して、MayaのPythonスクリプトを書いてください。
-スクリプト以外の文章は短めにまとめてください。
-pythonのコードブロックは必ず ```python で開始してください。
-Mayaに標準でインストールされていないパッケージやモジュールは使用しないでください。
-スクリプトを書くために情報が不足している場合は適宜質問してください。
-"""
+#SYSTEM_SETTINGS = u"""質問に対して、MayaのPythonスクリプトを書いてください。
+#スクリプト以外の文章は短めにまとめてください。
+#pythonのコードブロックは必ず ```python で開始してください。
+#ayaに標準でインストールされていないパッケージやモジュールは使用しないでください。
+#スクリプトを書くために情報が不足している場合は適宜質問してください。"""
+
+SYSTEM_SETTINGS = """Write a Maya Python script in response to the question.
+All text other than the script should be short and written in Japanese.
+Python code blocks should always start with ```python.
+Do not use packages or modules that are not installed as standard in Maya.
+If information is missing for writing scripts, ask questions as appropriate."""
 
 class ChatGPT_Maya(object):
 
@@ -27,7 +32,7 @@ class ChatGPT_Maya(object):
     
     def completion(self, 
                 new_message_text:str, 
-                settings_text:str = '', 
+                settings_text:str='', 
                 stream=True):
         
         if len(self.message_log) == 0 and len(settings_text) != 0:
