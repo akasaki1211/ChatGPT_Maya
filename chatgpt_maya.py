@@ -106,6 +106,18 @@ class ChatGPT_Maya(object):
                 json.dump(self.message_log, f, indent=4, ensure_ascii=False)
         except:
             pass
+    
+        log_file_path = os.path.join(LOG_DIR, self.session_id + '.txt')
+        try:
+            with open(log_file_path, 'w', encoding='utf-8-sig') as f:
+                for log in self.message_log:
+                    f.write('--'*30 + '\n')
+                    f.write(log['role'] + ' :\n\n')
+                    f.write(log['content'] + '\n')
+                f.write('--'*30 + '\n')
+        except:
+            pass
+        
 
     def export_scripts(self, index=None, *args):
         export_code_list = []
