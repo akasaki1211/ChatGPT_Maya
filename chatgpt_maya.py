@@ -10,6 +10,7 @@ from maya import cmds
 
 openai.api_key = os.getenv("OPENAI_API_KEY")
 
+EXPORT_LOG = True
 LOG_DIR = os.getenv("TEMP")
 
 #SYSTEM_SETTINGS = u"""質問に対して、MayaのPythonスクリプトを書いてください。
@@ -90,7 +91,7 @@ class ChatGPT_Maya(object):
         cmds.cmdScrollFieldExecuter(self.script_field, e=True, t='')
 
     def show_log(self, *args):
-        print(json.dumps(self.message_log, indent=4, ensure_ascii=False))
+        #print(json.dumps(self.message_log, indent=4, ensure_ascii=False))
         
         for log in self.message_log:
             print('--'*30)
@@ -105,6 +106,22 @@ class ChatGPT_Maya(object):
                 json.dump(self.message_log, f, indent=4, ensure_ascii=False)
         except:
             pass
+
+    def export_scripts(self, index=None, *args):
+        export_code_list = []
+        if index:
+            export_code_list = [self.code_list[index]]
+        else:
+            export_code_list = self.code_list
+        
+        file_name_prefix = datetime.now().strftime('script_%y%m%d_%H%M%S')
+        for i, code in enumerate(export_code_list):
+            code_file_path = os.path.join(LOG_DIR, '{}_{}.py'.format(file_name_prefix, str(i).zfill(2)))
+            try:
+                with open(code_file_path, 'w', encoding='utf-8-sig') as f:
+                    f.writelines(code)
+            except:
+                pass
 
     def update_scripts(self, *args):
         menu_items = cmds.optionMenu(self.scripts, q=True, ill=True)
@@ -132,9 +149,6 @@ class ChatGPT_Maya(object):
             cmds.scrollField(self.ai_comment, e=True, tx=message_text)
             cmds.refresh()
         
-        # ログ出力
-        self.export_log()
-
         # 返答全文をScriptEditorに出力
         print('//'*30)
         print(message_text)
@@ -142,6 +156,12 @@ class ChatGPT_Maya(object):
 
         # 返答を分解
         comment, self.code_list = self.decompose_response(message_text)
+
+        if EXPORT_LOG:
+            # ログ(JSON)出力
+            self.export_log()
+            # スクリプト保存
+            self.export_scripts()
         
         # Pythonコード以外の部分をai_commentに表示
         cmds.scrollField(self.ai_comment, e=True, tx=comment)
