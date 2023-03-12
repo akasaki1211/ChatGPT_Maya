@@ -2,12 +2,16 @@
 import os
 import re
 import json
+from datetime import datetime
 
 import openai
 
 from maya import cmds
 
 openai.api_key = os.getenv("OPENAI_API_KEY")
+
+EXPORT_LOG = True
+LOG_DIR = os.getenv("TEMP")
 
 #SYSTEM_SETTINGS = u"""質問に対して、MayaのPythonスクリプトを書いてください。
 #スクリプト以外の文章は短めにまとめてください。
@@ -25,11 +29,15 @@ class ChatGPT_Maya(object):
 
     def __init__(self):
         self.system_settings = SYSTEM_SETTINGS
-        self.message_log = []
-        self.code_list = []
-
+        
+        self.init_variables()
         self.create_window()
     
+    def init_variables(self, *args):
+        self.message_log = []
+        self.session_id = datetime.now().strftime('session_%y%m%d_%H%M%S')
+        self.code_list = []
+
     def completion(self, 
                 new_message_text:str, 
                 settings_text:str='', 
@@ -74,9 +82,8 @@ class ChatGPT_Maya(object):
         return comment, code_list
 
     def reset_session(self, *args):
-        self.message_log = []
-        self.code_list = []
-
+        self.init_variables()
+        
         self.update_scripts()
 
         cmds.scrollField(self.input_field, e=True, tx='')
@@ -84,13 +91,37 @@ class ChatGPT_Maya(object):
         cmds.cmdScrollFieldExecuter(self.script_field, e=True, t='')
 
     def show_log(self, *args):
-        print(json.dumps(self.message_log, indent=4, ensure_ascii=False))
+        #print(json.dumps(self.message_log, indent=4, ensure_ascii=False))
         
         for log in self.message_log:
             print('--'*30)
             print(log['role'] + ' :\n')
             print(log['content'])
         print('--'*30)
+    
+    def export_log(self, *args):
+        log_file_path = os.path.join(LOG_DIR, self.session_id + '.json')
+        try:
+            with open(log_file_path, 'w', encoding='utf-8-sig') as f:
+                json.dump(self.message_log, f, indent=4, ensure_ascii=False)
+        except:
+            pass
+
+    def export_scripts(self, index=None, *args):
+        export_code_list = []
+        if index:
+            export_code_list = [self.code_list[index]]
+        else:
+            export_code_list = self.code_list
+        
+        file_name_prefix = datetime.now().strftime('script_%y%m%d_%H%M%S')
+        for i, code in enumerate(export_code_list):
+            code_file_path = os.path.join(LOG_DIR, '{}_{}.py'.format(file_name_prefix, str(i).zfill(2)))
+            try:
+                with open(code_file_path, 'w', encoding='utf-8-sig') as f:
+                    f.writelines(code)
+            except:
+                pass
 
     def update_scripts(self, *args):
         menu_items = cmds.optionMenu(self.scripts, q=True, ill=True)
@@ -117,7 +148,7 @@ class ChatGPT_Maya(object):
         for message_text in self.completion(user_input, '' if self.message_log else self.system_settings):
             cmds.scrollField(self.ai_comment, e=True, tx=message_text)
             cmds.refresh()
-
+        
         # 返答全文をScriptEditorに出力
         print('//'*30)
         print(message_text)
@@ -125,6 +156,12 @@ class ChatGPT_Maya(object):
 
         # 返答を分解
         comment, self.code_list = self.decompose_response(message_text)
+
+        if EXPORT_LOG:
+            # ログ(JSON)出力
+            self.export_log()
+            # スクリプト保存
+            self.export_scripts()
         
         # Pythonコード以外の部分をai_commentに表示
         cmds.scrollField(self.ai_comment, e=True, tx=comment)
