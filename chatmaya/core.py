@@ -32,7 +32,7 @@ from .prompts import (
 from .retry import retry_decorator
 from .voice import VoiceGenerator
 
-DEFAULT_GEOMETORY = (200, 300, 800, 600)
+DEFAULT_GEOMETORY = (400, 300, 900, 600)
 
 class ChatMaya(QtWidgets.QMainWindow):
 
@@ -347,6 +347,11 @@ class ChatMaya(QtWidgets.QMainWindow):
         vBoxLayout1.addWidget(self.user_input)
         vBoxLayout1.addWidget(self.send_button)
 
+        self.script_reporter = cmds.cmdScrollFieldReporter(clr=True)
+        script_reporter_ptr = OpenMayaUI.MQtUtil.findControl(self.script_reporter)
+        self.script_reporter_widget = wrapInstance(int(script_reporter_ptr), QtWidgets.QWidget)
+        self.script_reporter_widget.setMaximumSize(1000000, 120)
+
         # script editor field
         self.script_editor_py = cmds.cmdScrollFieldExecuter(st="python", sln=True)
         script_editor_ptr_py = OpenMayaUI.MQtUtil.findControl(self.script_editor_py)
@@ -373,6 +378,7 @@ class ChatMaya(QtWidgets.QMainWindow):
         hBoxLayout2.addWidget(self.execute_button)
         
         vBoxLayout2 = QtWidgets.QVBoxLayout()
+        vBoxLayout2.addWidget(self.script_reporter_widget)
         vBoxLayout2.addWidget(self.stacked_widget)
         vBoxLayout2.addLayout(hBoxLayout2)
 
@@ -418,6 +424,7 @@ class ChatMaya(QtWidgets.QMainWindow):
         else:
             editor = self.script_editor_mel
         
+        cmds.cmdScrollFieldReporter(self.script_reporter, e=True, clear=True)
         cmds.cmdScrollFieldExecuter(editor, e=True, executeAll=True)
         
     def export_log(self, *args):
