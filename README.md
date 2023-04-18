@@ -26,6 +26,14 @@ chatmaya.run()
 
 ![example3](.images/example3.png)
 
+## アンインストール
+以下のフォルダを削除すればアンインストールされます。
+* `C:\Users\<ユーザー名>\Documents\maya\<Mayaバージョン>\scripts\chatmaya`
+* `C:\Users\<ユーザー名>\Documents\maya\ChatMaya`
+
+追加パッケージは`pip uninstall`で個別に行うか以下のフォルダを丸ごと削除してください。
+* `C:\Users\<ユーザー名>\Documents\maya\<Mayaバージョン>\site-packages`
+
 ## リンク
 ### 解説, サンプル
 ※[beta](https://github.com/akasaki1211/ChatGPT_Maya/tree/beta)時点での解説です
