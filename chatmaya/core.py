@@ -97,7 +97,8 @@ class ChatMaya(QtWidgets.QMainWindow):
     def new_chat(self, *args):
         self.init_variables()
         self.update_scripts()
-        cmds.cmdScrollFieldExecuter(self.script_editor, e=True, clear=True)
+        cmds.cmdScrollFieldExecuter(self.script_editor_py, e=True, clear=True)
+        cmds.cmdScrollFieldExecuter(self.script_editor_mel, e=True, clear=True)
         self.chat_history_model.removeRows(0, self.chat_history_model.rowCount())
         self.statusBar().showMessage("New Chat")
 
@@ -180,11 +181,15 @@ class ChatMaya(QtWidgets.QMainWindow):
         # Scriptsプルダウンを更新
         self.update_scripts()
 
-        # Pythonコードの1つ目をscript_editorに表示
-        if self.code_list:
-            cmds.cmdScrollFieldExecuter(self.script_editor, e=True, t=self.code_list[0])
+        # コードの1つ目をscript_editorに表示
+        if self.script_type == "python":
+            editor = self.script_editor_py
         else:
-            cmds.cmdScrollFieldExecuter(self.script_editor, e=True, clear=True)
+            editor = self.script_editor_mel
+        if self.code_list:
+            cmds.cmdScrollFieldExecuter(editor, e=True, t=self.code_list[0])
+        else:
+            cmds.cmdScrollFieldExecuter(editor, e=True, clear=True)
 
         self.statusBar().showMessage("Completion Finish. (Log files:{})".format(self.session_log_dir))
 
@@ -302,16 +307,18 @@ class ChatMaya(QtWidgets.QMainWindow):
         new_button = QtWidgets.QPushButton('New Chat')
         new_button.clicked.connect(self.new_chat)
 
-        """ self.script_type_rbtn_1 = QtWidgets.QRadioButton("Python")
+        self.script_type_rbtn_1 = QtWidgets.QRadioButton("Python")
         self.script_type_rbtn_1.setChecked(True)
+        self.script_type_rbtn_1.setMaximumSize(100, 50)
         self.script_type_rbtn_1.toggled.connect(self.toggle_script_type)
 
         self.script_type_rbtn_2 = QtWidgets.QRadioButton("MEL")
+        self.script_type_rbtn_2.setMaximumSize(100, 50)
 
         hBoxLayout1 = QtWidgets.QHBoxLayout()
         hBoxLayout1.addWidget(new_button)
         hBoxLayout1.addWidget(self.script_type_rbtn_1)
-        hBoxLayout1.addWidget(self.script_type_rbtn_2) """
+        hBoxLayout1.addWidget(self.script_type_rbtn_2)
 
         # chat history
         self.chat_history_model = QtCore.QStringListModel()
@@ -335,17 +342,24 @@ class ChatMaya(QtWidgets.QMainWindow):
         self.send_button.clicked.connect(self.send_message)
 
         vBoxLayout1 = QtWidgets.QVBoxLayout()
-        #vBoxLayout1.addLayout(hBoxLayout1)
-        vBoxLayout1.addLayout(new_button)
+        vBoxLayout1.addLayout(hBoxLayout1)
         vBoxLayout1.addWidget(self.chat_history_view)
         vBoxLayout1.addWidget(self.user_input)
         vBoxLayout1.addWidget(self.send_button)
 
         # script editor field
-        self.script_editor = cmds.cmdScrollFieldExecuter(st=self.script_type, sln=True)
-        script_editor_ptr = OpenMayaUI.MQtUtil.findControl(self.script_editor)
-        script_editor_widget = wrapInstance(int(script_editor_ptr), QtWidgets.QWidget)
+        self.script_editor_py = cmds.cmdScrollFieldExecuter(st="python", sln=True)
+        script_editor_ptr_py = OpenMayaUI.MQtUtil.findControl(self.script_editor_py)
+        self.script_editor_widget_py = wrapInstance(int(script_editor_ptr_py), QtWidgets.QWidget)
+        
+        self.script_editor_mel = cmds.cmdScrollFieldExecuter(st="mel", sln=True)
+        script_editor_ptr_mel = OpenMayaUI.MQtUtil.findControl(self.script_editor_mel)
+        self.script_editor_widget_mel = wrapInstance(int(script_editor_ptr_mel), QtWidgets.QWidget)
 
+        self.stacked_widget = QtWidgets.QStackedWidget()
+        self.stacked_widget.addWidget(self.script_editor_widget_py)
+        self.stacked_widget.addWidget(self.script_editor_widget_mel)
+        
         self.choice_script = QtWidgets.QComboBox()
         self.choice_script.setEditable(False)
         self.choice_script.setMaximumSize(100, 30)
@@ -359,7 +373,7 @@ class ChatMaya(QtWidgets.QMainWindow):
         hBoxLayout2.addWidget(self.execute_button)
         
         vBoxLayout2 = QtWidgets.QVBoxLayout()
-        vBoxLayout2.addWidget(script_editor_widget)
+        vBoxLayout2.addWidget(self.stacked_widget)
         vBoxLayout2.addLayout(hBoxLayout2)
 
         main_layout = QtWidgets.QHBoxLayout(self)
@@ -371,18 +385,18 @@ class ChatMaya(QtWidgets.QMainWindow):
         widget.setLayout(main_layout)
         self.setCentralWidget(widget)
     
-    """ def toggle_script_type(self, *args):
+    def toggle_script_type(self, *args):
         if self.script_type_rbtn_1.isChecked():
             self.script_type = "python"
+            self.stacked_widget.setCurrentIndex(0)
         else:
             self.script_type = "mel"
+            self.stacked_widget.setCurrentIndex(1)
 
         if self.messages:
             self.messages[0] = self.set_system_message(self.script_type)
         else:
             self.messages = [self.set_system_message(self.script_type)]
-
-        cmds.cmdScrollFieldExecuter(self.script_editor, e=True, st=self.script_type) """
 
     def update_scripts(self, *args):
         self.choice_script.clear()
@@ -391,14 +405,21 @@ class ChatMaya(QtWidgets.QMainWindow):
 
     def change_script(self, item, *args):
         if item:
-            cmds.cmdScrollFieldExecuter(self.script_editor, e=True, t=self.code_list[int(item)-1])
+            if self.script_type == "python":
+                editor = self.script_editor_py
+            else:
+                editor = self.script_editor_mel
+            
+            cmds.cmdScrollFieldExecuter(editor, e=True, t=self.code_list[int(item)-1])
 
     def execute_script(self, *args):
-        #code = cmds.cmdScrollFieldExecuter(self.script_editor, q=True, t=True)
-        #if code:
-        #    exec(code, {'__name__': '__main__'}, None)
-        cmds.cmdScrollFieldExecuter(self.script_editor, e=True, executeAll=True)
-
+        if self.script_type == "python":
+            editor = self.script_editor_py
+        else:
+            editor = self.script_editor_mel
+        
+        cmds.cmdScrollFieldExecuter(editor, e=True, executeAll=True)
+        
     def export_log(self, *args):
         log_file_path = os.path.join(self.session_log_dir, 'messages.json')
         try:
