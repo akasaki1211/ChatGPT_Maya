@@ -24,7 +24,7 @@ chatmaya.run()
 * ログや設定ファイルは`C:\Users\<ユーザー名>\Documents\maya\ChatMaya`に出力されています。
 * 別途[VOICEVOX ENGINE](https://github.com/VOICEVOX/voicevox_engine)が起動していると、自動的にコードブロック以外の部分の読み上げが行われます。使用する場合はGPUモード推奨です。
 
-![example3](.images/example3.png)
+![example1](.images/example1.png)
 
 ## アンインストール
 以下のフォルダを削除すればアンインストールされます。
