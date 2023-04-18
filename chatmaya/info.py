@@ -10,7 +10,8 @@ ABOUT_TXT = """
 {}  {}
 
 Supported Maya:
- Maya 2023
+ Maya 2023 (Python3.9.7)
+ Maya 2024 (Python3.10.8)
 
 (c) 2023 Hiroyuki Akasaki""".format(TITLE, VERSION)
 

@@ -1,15 +1,15 @@
 # ChatGPT_Maya
-MayaからChatGPT API（[gpt-3.5-turbo](https://platform.openai.com/docs/guides/chat)）を呼び出し、Pythonスクリプトを生成・実行するGUIです。  
+MayaからChatGPT API（[gpt-3.5-turbo](https://platform.openai.com/docs/guides/chat)）を呼び出し、Python/MELスクリプトを生成・実行するGUIです。  
 
 > テスト環境 :
 > * Windows 10/11
 > * Maya 2023 (Python3.9.7)
-> * openai 0.27.4
+> * Maya 2024 (Python3.10.8)
 
 ## インストール
 1. [Account API Keys - OpenAI API](https://platform.openai.com/account/api-keys)よりAPI Keyを取得し、環境変数`OPENAI_API_KEY`に設定する  
 
-2. Mayaを起動していない状態で`install\install_maya2023_win.bat`を実行する。
+2. Mayaを起動していない状態で`install\install_maya20XX_win.bat`を実行する。
 
 ## 使用方法
 ```python
@@ -18,7 +18,7 @@ chatmaya.run()
 ```
 
 * 左側下部のテキストフィールドにプロンプトを打ち込み送信ボタンを押すとAPIにリクエストが送信され返答が表示されます。
-* 返答はPythonコードとその他の部分に分解されそれぞれのフィールドに表示されます。
+* 返答はPython/MELコードとその他の部分に分解されそれぞれのフィールドに表示されます。
 * 返答に複数のコードブロックが書いてあった場合は、右側下部のプルダウンから選択出来るようになります。
 * New Chatを押すかウィンドウを閉じるまでは、会話履歴が残ります。
 * ログや設定ファイルは`C:\Users\<ユーザー名>\Documents\maya\ChatMaya`に出力されています。
