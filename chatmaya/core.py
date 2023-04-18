@@ -26,7 +26,8 @@ from .info import (
 )
 from .prompts import (
     SYSTEM_TEMPLATE_PY,
-    SYSTEM_TEMPLATE_MEL
+    SYSTEM_TEMPLATE_MEL,
+    USER_TEMPLATE
 )
 from .retry import retry_decorator
 from .voice import VoiceGenerator
@@ -48,6 +49,8 @@ class ChatMaya(QtWidgets.QMainWindow):
         self.executor = ThreadPoolExecutor(max_workers=2)
         self.executor.submit(self.voice_synthesis_thread)
         self.executor.submit(self.voice_play_thread)
+
+        self.script_type = "python"
         
         self.init_variables()
         
@@ -64,11 +67,21 @@ class ChatMaya(QtWidgets.QMainWindow):
         self.session_log_dir = Path(LOG_DIR / self.session_id)
         if not self.session_log_dir.is_dir():
             self.session_log_dir.mkdir(parents=True)
-        self.messages = [{"role":"system", "content":SYSTEM_TEMPLATE_PY}]
+
+        self.messages = [self.set_system_message(self.script_type)]
         self.code_list = []
 
+    def set_system_message(self, type:str="python", *args):
+        if type == "python":
+            return {"role":"system", "content":SYSTEM_TEMPLATE_PY}
+        elif type == "mel":
+            return {"role":"system", "content":SYSTEM_TEMPLATE_MEL}
+
     def decompose_response(self, txt:str):
-        pattern = r"```python([\s\S]*?)```"
+        if self.script_type == "python":
+            pattern = r"```python([\s\S]*?)```"
+        else:
+            pattern = r"```mel([\s\S]*?)```"
         
         code_list = re.findall(pattern, txt)
         for i in range(int(len(code_list))):
@@ -103,11 +116,14 @@ class ChatMaya(QtWidgets.QMainWindow):
         
         message_text = ""
         sentence = ""
-        sentence_end_chars = "。！？"
+        sentence_end_chars = "。！？:"
         backquote_count = 0
         is_code_block = False
-        
-        self.messages.append({"role": "user", "content": user_message})
+
+        user_prompt = USER_TEMPLATE.format(
+            script_type="Maya Python" if self.script_type == "python" else "MEL", 
+            questions=user_message)
+        self.messages.append({"role": "user", "content": user_prompt})
         
         self.chat_history_model.insertRow(self.chat_history_model.rowCount())
         
@@ -138,6 +154,7 @@ class ChatMaya(QtWidgets.QMainWindow):
 
                     if char in sentence_end_chars:
                         if not is_code_block:
+                            # ボイス合成キューに１文ずつ追加
                             self.q_voice_synthesis.put(sentence.strip())
                             backquote_count = 0
                         sentence = ""
@@ -163,7 +180,7 @@ class ChatMaya(QtWidgets.QMainWindow):
         # Scriptsプルダウンを更新
         self.update_scripts()
 
-        # Pythonコードの1つ目をscript_fieldに表示
+        # Pythonコードの1つ目をscript_editorに表示
         if self.code_list:
             cmds.cmdScrollFieldExecuter(self.script_editor, e=True, t=self.code_list[0])
         else:
@@ -281,10 +298,22 @@ class ChatMaya(QtWidgets.QMainWindow):
         # statusBar
         self.statusBar().showMessage("Ready.")
 
-        # Chat field
-        self.new_button = QtWidgets.QPushButton('New Chat')
-        self.new_button.clicked.connect(self.new_chat)
+        # chat
+        new_button = QtWidgets.QPushButton('New Chat')
+        new_button.clicked.connect(self.new_chat)
 
+        """ self.script_type_rbtn_1 = QtWidgets.QRadioButton("Python")
+        self.script_type_rbtn_1.setChecked(True)
+        self.script_type_rbtn_1.toggled.connect(self.toggle_script_type)
+
+        self.script_type_rbtn_2 = QtWidgets.QRadioButton("MEL")
+
+        hBoxLayout1 = QtWidgets.QHBoxLayout()
+        hBoxLayout1.addWidget(new_button)
+        hBoxLayout1.addWidget(self.script_type_rbtn_1)
+        hBoxLayout1.addWidget(self.script_type_rbtn_2) """
+
+        # chat history
         self.chat_history_model = QtCore.QStringListModel()
 
         self.chat_history_view = QtWidgets.QListView()
@@ -293,8 +322,8 @@ class ChatMaya(QtWidgets.QMainWindow):
         self.chat_history_view.setAlternatingRowColors(True)
         self.chat_history_view.setStyleSheet("""
             QListView::item { border-bottom: 0px solid; padding: 5px; }
-            QListView::item { background-color: #2a2b36; }
-            QListView::item:alternate { background-color: #434554; }
+            QListView::item { background-color: #27272e; }
+            QListView::item:alternate { background-color: #363842; }
             """)
 
         # user input
@@ -306,13 +335,14 @@ class ChatMaya(QtWidgets.QMainWindow):
         self.send_button.clicked.connect(self.send_message)
 
         vBoxLayout1 = QtWidgets.QVBoxLayout()
-        vBoxLayout1.addWidget(self.new_button)
+        #vBoxLayout1.addLayout(hBoxLayout1)
+        vBoxLayout1.addLayout(new_button)
         vBoxLayout1.addWidget(self.chat_history_view)
         vBoxLayout1.addWidget(self.user_input)
         vBoxLayout1.addWidget(self.send_button)
 
         # script editor field
-        self.script_editor = cmds.cmdScrollFieldExecuter(st='python', sln=True)
+        self.script_editor = cmds.cmdScrollFieldExecuter(st=self.script_type, sln=True)
         script_editor_ptr = OpenMayaUI.MQtUtil.findControl(self.script_editor)
         script_editor_widget = wrapInstance(int(script_editor_ptr), QtWidgets.QWidget)
 
@@ -341,6 +371,19 @@ class ChatMaya(QtWidgets.QMainWindow):
         widget.setLayout(main_layout)
         self.setCentralWidget(widget)
     
+    """ def toggle_script_type(self, *args):
+        if self.script_type_rbtn_1.isChecked():
+            self.script_type = "python"
+        else:
+            self.script_type = "mel"
+
+        if self.messages:
+            self.messages[0] = self.set_system_message(self.script_type)
+        else:
+            self.messages = [self.set_system_message(self.script_type)]
+
+        cmds.cmdScrollFieldExecuter(self.script_editor, e=True, st=self.script_type) """
+
     def update_scripts(self, *args):
         self.choice_script.clear()
         for i in range(int(len(self.code_list))):
@@ -351,9 +394,10 @@ class ChatMaya(QtWidgets.QMainWindow):
             cmds.cmdScrollFieldExecuter(self.script_editor, e=True, t=self.code_list[int(item)-1])
 
     def execute_script(self, *args):
-        code = cmds.cmdScrollFieldExecuter(self.script_editor, q=True, t=True)
-        if code:
-            exec(code, {'__name__': '__main__'}, None)
+        #code = cmds.cmdScrollFieldExecuter(self.script_editor, q=True, t=True)
+        #if code:
+        #    exec(code, {'__name__': '__main__'}, None)
+        cmds.cmdScrollFieldExecuter(self.script_editor, e=True, executeAll=True)
 
     def export_log(self, *args):
         log_file_path = os.path.join(self.session_log_dir, 'messages.json')
