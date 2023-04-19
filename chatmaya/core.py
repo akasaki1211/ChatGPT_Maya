@@ -65,6 +65,7 @@ class ChatMaya(QtWidgets.QMainWindow):
         self.script_type = "python"
         self.last_user_message = ""
         self.leave_codeblocks = False
+        self.max_total_token = 2500
         self.init_variables()
         
         # User Prefs
@@ -129,8 +130,16 @@ class ChatMaya(QtWidgets.QMainWindow):
 
         self.statusBar().showMessage("Completion...")
 
+        # prompt tokens
         content_list = [msg["content"] for msg in self.messages]
         prompt_tokens = self.num_tokens_from_text("".join(content_list))
+
+        if prompt_tokens > self.max_total_token:
+            self.messages = self.shrink_messages(self.messages)
+
+        content_list = [msg["content"] for msg in self.messages]
+        prompt_tokens = self.num_tokens_from_text("".join(content_list))
+
         self.total_tokens += prompt_tokens
 
         # APIコール
@@ -169,6 +178,7 @@ class ChatMaya(QtWidgets.QMainWindow):
         
         self.messages.append({'role': 'assistant', 'content': message_text})
 
+        # completion tokens
         completion_tokens = self.num_tokens_from_text(message_text)
         self.total_tokens += completion_tokens
 
@@ -276,6 +286,14 @@ class ChatMaya(QtWidgets.QMainWindow):
     def num_tokens_from_text(self, text:str) -> int:
         encoding = tiktoken.encoding_for_model(self.completion_model)
         return len(encoding.encode(text))
+    
+    def shrink_messages(self, messages:list) -> list:
+        messages.pop(1)
+        content_list = [msg["content"] for msg in messages]
+        prompt_tokens = self.num_tokens_from_text("".join(content_list))
+        if prompt_tokens > self.max_total_token:
+            messages = self.shrink_messages(messages)
+        return messages
 
     # voice
     def voice_synthesis_thread(self):
