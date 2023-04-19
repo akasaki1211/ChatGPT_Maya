@@ -258,6 +258,7 @@ class ChatMaya(QtWidgets.QMainWindow):
                 if content:
                     yield content
 
+    # voice
     def voice_synthesis_thread(self):
 
         while not (self._exit_flag and self.q_voice_synthesis.empty()):
@@ -334,6 +335,7 @@ class ChatMaya(QtWidgets.QMainWindow):
             self.voice_intonation = 1
             self.voice_volume = 1
             self.voice_post = 0.1
+            cmds.error("Settings could not be applied. Use default settings.")
 
     def open_settings_dialog(self, *args):
         self.settings.update()
@@ -637,9 +639,12 @@ class SettingsDialog(QtWidgets.QDialog):
         completion_layout = QtWidgets.QFormLayout(completion_group)
 
         # model
-        self.model_edit = QtWidgets.QLineEdit(self)
-        self.model_edit.setMinimumWidth(100)
-        completion_layout.addRow("Model:", self.model_edit)
+        self.model_combobox = QtWidgets.QComboBox()
+        self.model_combobox.addItem("gpt-3.5-turbo")
+        self.model_combobox.addItem("gpt-4")
+        self.model_combobox.setMinimumWidth(100)
+        
+        completion_layout.addRow("Model:", self.model_combobox)
 
         # temperature
         self.temperature_spinbox = QtWidgets.QDoubleSpinBox(self)
@@ -680,30 +685,35 @@ class SettingsDialog(QtWidgets.QDialog):
 
         # speed
         self.speed_spinbox = QtWidgets.QDoubleSpinBox(self)
+        self.speed_spinbox.setRange(0.5, 2.0)
         self.speed_spinbox.setSingleStep(0.1)
         self.speed_spinbox.setMinimumWidth(60)
         voice_layout.addRow("Speed:", self.speed_spinbox)
 
         # pitch
         self.pitch_spinbox = QtWidgets.QDoubleSpinBox(self)
+        self.pitch_spinbox.setRange(-0.15, 0.15)
         self.pitch_spinbox.setSingleStep(0.01)
         self.pitch_spinbox.setMinimumWidth(60)
         voice_layout.addRow("Pitch:", self.pitch_spinbox)
 
         # intonation
         self.intonation_spinbox = QtWidgets.QDoubleSpinBox(self)
+        self.intonation_spinbox.setRange(0.0, 2.0)
         self.intonation_spinbox.setSingleStep(0.1)
         self.intonation_spinbox.setMinimumWidth(60)
         voice_layout.addRow("Intonation:", self.intonation_spinbox)
 
         # volume
         self.volume_spinbox = QtWidgets.QDoubleSpinBox(self)
+        self.volume_spinbox.setRange(0.0, 5.0)
         self.volume_spinbox.setSingleStep(0.1)
         self.volume_spinbox.setMinimumWidth(60)
         voice_layout.addRow("Volume:", self.volume_spinbox)
 
         # post
         self.post_spinbox = QtWidgets.QDoubleSpinBox(self)
+        self.post_spinbox.setRange(0.0, 1.5)
         self.post_spinbox.setSingleStep(0.1)
         self.post_spinbox.setMinimumWidth(60)
         voice_layout.addRow("Post:", self.post_spinbox)
@@ -727,7 +737,7 @@ class SettingsDialog(QtWidgets.QDialog):
 
     def set_UI_values(self, *args):
         try:
-            self.model_edit.setText(self.data["completion"]["model"])
+            self.model_combobox.setCurrentText(self.data["completion"]["model"])
             self.temperature_spinbox.setValue(self.data["completion"]["temperature"])
             self.top_p_spinbox.setValue(self.data["completion"]["top_p"])
             self.presence_penalty_spinbox.setValue(self.data["completion"]["presence_penalty"])
@@ -745,7 +755,7 @@ class SettingsDialog(QtWidgets.QDialog):
     def save_and_accept(self):
         self.data["completion"] = {}
         self.data["voice"] = {}
-        self.data["completion"]["model"] = self.model_edit.text()
+        self.data["completion"]["model"] = self.model_combobox.currentText()
         self.data["completion"]["temperature"] = self.temperature_spinbox.value()
         self.data["completion"]["top_p"] = self.top_p_spinbox.value()
         self.data["completion"]["presence_penalty"] = self.presence_penalty_spinbox.value()
