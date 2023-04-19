@@ -27,9 +27,9 @@ chatmaya.run()
 ![example1](.images/example1.png)
 
 ## アンインストール
-以下のフォルダを削除すればアンインストールされます。
-* `C:\Users\<ユーザー名>\Documents\maya\<Mayaバージョン>\scripts\chatmaya`
-* `C:\Users\<ユーザー名>\Documents\maya\ChatMaya`
+以下のフォルダを削除すればアンインストールされます。  
+* ツール本体：`C:\Users\<ユーザー名>\Documents\maya\<Mayaバージョン>\scripts\chatmaya`
+* 設定・ログ：`C:\Users\<ユーザー名>\Documents\maya\ChatMaya`
 
 追加パッケージは`pip uninstall`で個別に行うか以下のフォルダを丸ごと削除してください。
 * `C:\Users\<ユーザー名>\Documents\maya\<Mayaバージョン>\site-packages`
