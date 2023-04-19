@@ -9,6 +9,7 @@ from datetime import datetime
 from concurrent.futures import ThreadPoolExecutor
 import queue
 
+import tiktoken
 import openai
 openai.api_key = os.getenv("OPENAI_API_KEY")
 
@@ -81,9 +82,11 @@ class ChatMaya(QtWidgets.QMainWindow):
         self.session_log_dir = Path(LOG_DIR / self.session_id)
         if not self.session_log_dir.is_dir():
             self.session_log_dir.mkdir(parents=True)
+            print("log dir : {}".format(self.session_log_dir))
 
         self.messages = [self.set_system_message(self.script_type)]
         self.code_list = []
+        self.total_tokens = 0
 
     def set_system_message(self, type:str="python", *args):
         if type == "python":
@@ -126,6 +129,10 @@ class ChatMaya(QtWidgets.QMainWindow):
 
         self.statusBar().showMessage("Completion...")
 
+        content_list = [msg["content"] for msg in self.messages]
+        prompt_tokens = self.num_tokens_from_text("".join(content_list))
+        self.total_tokens += prompt_tokens
+
         # APIコール
         try:
             for content in self.completion():
@@ -162,6 +169,9 @@ class ChatMaya(QtWidgets.QMainWindow):
         
         self.messages.append({'role': 'assistant', 'content': message_text})
 
+        completion_tokens = self.num_tokens_from_text(message_text)
+        self.total_tokens += completion_tokens
+
         # 最後の文が句読点で終わっていない場合
         if sentence.strip():
             if not is_code_block:
@@ -190,8 +200,13 @@ class ChatMaya(QtWidgets.QMainWindow):
         else:
             cmds.cmdScrollFieldExecuter(editor, e=True, clear=True)
 
-        self.statusBar().showMessage("Completion Finish.")
-        print("Log files : {}".format(self.session_log_dir))
+        self.statusBar().showMessage("Completion Finish. ({} prompt + {} completion = {} tokens) Total:{}".format(
+            prompt_tokens,
+            completion_tokens,
+            prompt_tokens + completion_tokens,
+            self.total_tokens
+        ))
+        #print("Log files : {}".format(self.session_log_dir))
 
         self.export_log()
         self.export_scripts()
@@ -257,6 +272,10 @@ class ChatMaya(QtWidgets.QMainWindow):
                 content = chunk['choices'][0]['delta'].get('content')
                 if content:
                     yield content
+
+    def num_tokens_from_text(self, text:str) -> int:
+        encoding = tiktoken.encoding_for_model(self.completion_model)
+        return len(encoding.encode(text))
 
     # voice
     def voice_synthesis_thread(self):
@@ -756,16 +775,16 @@ class SettingsDialog(QtWidgets.QDialog):
         self.data["completion"] = {}
         self.data["voice"] = {}
         self.data["completion"]["model"] = self.model_combobox.currentText()
-        self.data["completion"]["temperature"] = self.temperature_spinbox.value()
-        self.data["completion"]["top_p"] = self.top_p_spinbox.value()
-        self.data["completion"]["presence_penalty"] = self.presence_penalty_spinbox.value()
-        self.data["completion"]["frequency_penalty"] = self.frequency_penalty_spinbox.value()
+        self.data["completion"]["temperature"] = round(self.temperature_spinbox.value(), 2)
+        self.data["completion"]["top_p"] = round(self.top_p_spinbox.value(), 2)
+        self.data["completion"]["presence_penalty"] = round(self.presence_penalty_spinbox.value(), 2)
+        self.data["completion"]["frequency_penalty"] = round(self.frequency_penalty_spinbox.value(), 2)
         self.data["voice"]["speakerid"] = self.speakerid_spinbox.value()
-        self.data["voice"]["speed"] = self.speed_spinbox.value()
-        self.data["voice"]["pitch"] = self.pitch_spinbox.value()
-        self.data["voice"]["intonation"] = self.intonation_spinbox.value()
-        self.data["voice"]["volume"] = self.volume_spinbox.value()
-        self.data["voice"]["post"] = self.post_spinbox.value()
+        self.data["voice"]["speed"] = round(self.speed_spinbox.value(), 2)
+        self.data["voice"]["pitch"] = round(self.pitch_spinbox.value(), 2)
+        self.data["voice"]["intonation"] = round(self.intonation_spinbox.value(), 2)
+        self.data["voice"]["volume"] = round(self.volume_spinbox.value(), 2)
+        self.data["voice"]["post"] = round(self.post_spinbox.value(), 2)
 
         self.accept() 
     
