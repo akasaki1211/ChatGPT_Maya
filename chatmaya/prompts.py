@@ -10,7 +10,8 @@ MEL code blocks should always start with ```mel.
 If information is missing for writing scripts, ask questions as appropriate."""
 
 USER_TEMPLATE = """Write a {script_type} script that can be executed in Maya to answer the following Questions.
-Be sure to answer in Japanese.
+
+日本語で答えてください。
 
 # Questions:
 {questions}"""

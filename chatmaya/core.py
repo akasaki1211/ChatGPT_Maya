@@ -41,17 +41,19 @@ class ChatMaya(QtWidgets.QMainWindow):
 
         self._exit_flag = False
 
+        # voice
         self.voice_generator = VoiceGenerator()
-
         self.q_voice_synthesis = queue.Queue()
         self.q_voice_play = queue.Queue()
 
+        # thread
         self.executor = ThreadPoolExecutor(max_workers=2)
         self.executor.submit(self.voice_synthesis_thread)
         self.executor.submit(self.voice_play_thread)
 
+        # settings
         self.script_type = "python"
-        
+        self.last_user_message = ""
         self.init_variables()
         
         # User Prefs
@@ -102,18 +104,7 @@ class ChatMaya(QtWidgets.QMainWindow):
         self.chat_history_model.removeRows(0, self.chat_history_model.rowCount())
         self.statusBar().showMessage("New Chat")
 
-    def send_message(self):
-        user_message = self.user_input.toPlainText()
-        if not user_message:
-            return
-        
-        self.statusBar().showMessage("Send")
-        
-        self.chat_history_model.insertRow(self.chat_history_model.rowCount())
-        self.chat_history_model.setData(
-            self.chat_history_model.index(self.chat_history_model.rowCount() - 1), 
-            user_message)
-        self.user_input.clear()
+    def generate_message(self, *args):
         
         message_text = ""
         sentence = ""
@@ -121,13 +112,6 @@ class ChatMaya(QtWidgets.QMainWindow):
         backquote_count = 0
         is_code_block = False
 
-        user_prompt = USER_TEMPLATE.format(
-            script_type="Maya Python" if self.script_type == "python" else "MEL", 
-            questions=user_message)
-        self.messages.append({"role": "user", "content": user_prompt})
-        
-        self.chat_history_model.insertRow(self.chat_history_model.rowCount())
-        
         self.statusBar().showMessage("Completion...")
 
         # APIコール
@@ -163,6 +147,8 @@ class ChatMaya(QtWidgets.QMainWindow):
         except Exception as e:
             cmds.error(str(e))
             return
+        
+        self.messages.append({'role': 'assistant', 'content': message_text})
 
         # 最後の文が句読点で終わっていない場合
         if sentence.strip():
@@ -191,29 +177,73 @@ class ChatMaya(QtWidgets.QMainWindow):
         else:
             cmds.cmdScrollFieldExecuter(editor, e=True, clear=True)
 
-        self.statusBar().showMessage("Completion Finish. (Log files:{})".format(self.session_log_dir))
+        self.statusBar().showMessage("Completion Finish.")
+        print("Log files : {}".format(self.session_log_dir))
 
         self.export_log()
         self.export_scripts()
+
+    def send_message(self):
+        user_message = self.user_input.toPlainText()
+        if not user_message:
+            return
+        
+        self.chat_history_model.insertRow(self.chat_history_model.rowCount())
+        self.chat_history_model.setData(
+            self.chat_history_model.index(self.chat_history_model.rowCount() - 1), 
+            user_message)
+        self.user_input.clear()
+
+        self.chat_history_model.insertRow(self.chat_history_model.rowCount())
+
+        user_prompt = USER_TEMPLATE.format(
+            script_type="Maya Python" if self.script_type == "python" else "MEL", 
+            questions=user_message)
+        self.messages.append({"role": "user", "content": user_prompt})
+        self.last_user_message = user_message
+
+        self.generate_message()
+
+    def regenerate_message(self):
+        if len(self.messages) < 2:
+            return
+        
+        self.chat_history_model.setData(
+            self.chat_history_model.index(self.chat_history_model.rowCount() - 1), 
+            '')
+        
+        self.messages.pop(-1)
+
+        user_prompt = USER_TEMPLATE.format(
+            script_type="Maya Python" if self.script_type == "python" else "MEL", 
+            questions=self.last_user_message)
+        self.messages[-1] = {"role": "user", "content": user_prompt}
+
+        self.generate_message()
+
+    def delete_last_message(self):
+        self.chat_history_model.removeRows(self.chat_history_model.rowCount() - 2, 2)
+        self.messages.pop(-1)
+        self.messages.pop(-1)
 
     @retry_decorator
     def completion(self):
         
         result = openai.ChatCompletion.create(
             model="gpt-3.5-turbo",
+            temperature=0.8,
+            top_p=1,
+            presence_penalty=0,
+            frequency_penalty=0,
             messages=self.messages, 
             stream=True
         )
         
-        message_text = "" 
         for chunk in result:
             if chunk:
                 content = chunk['choices'][0]['delta'].get('content')
                 if content:
-                    message_text += content
                     yield content
-        else:
-            self.messages.append({'role': 'assistant', 'content': message_text})
 
     def voice_synthesis_thread(self):
 
@@ -266,6 +296,7 @@ class ChatMaya(QtWidgets.QMainWindow):
         x, y, w, h = DEFAULT_GEOMETORY
         self.setGeometry(x, y, w, h)
     
+    # UI
     def init_ui(self, *args):
         self.reset_user_prefs()
         self.setWindowTitle('{0} {1}'.format(TITLE, VERSION))
@@ -309,11 +340,11 @@ class ChatMaya(QtWidgets.QMainWindow):
 
         self.script_type_rbtn_1 = QtWidgets.QRadioButton("Python")
         self.script_type_rbtn_1.setChecked(True)
-        self.script_type_rbtn_1.setMaximumSize(100, 50)
+        self.script_type_rbtn_1.setMaximumWidth(80)
         self.script_type_rbtn_1.toggled.connect(self.toggle_script_type)
 
         self.script_type_rbtn_2 = QtWidgets.QRadioButton("MEL")
-        self.script_type_rbtn_2.setMaximumSize(100, 50)
+        self.script_type_rbtn_2.setMaximumWidth(80)
 
         hBoxLayout1 = QtWidgets.QHBoxLayout()
         hBoxLayout1.addWidget(new_button)
@@ -338,14 +369,27 @@ class ChatMaya(QtWidgets.QMainWindow):
         self.user_input.setPlaceholderText("Send a message...")
         self.user_input.setFixedHeight(100)
 
-        self.send_button = QtWidgets.QPushButton("Send")
-        self.send_button.clicked.connect(self.send_message)
+        send_button = QtWidgets.QPushButton("Send")
+        send_button.clicked.connect(self.send_message)
+
+        regenerate_button = QtWidgets.QPushButton("Regenerate")
+        regenerate_button.setMaximumWidth(120)
+        regenerate_button.clicked.connect(self.regenerate_message)
+
+        delete_last_button = QtWidgets.QPushButton("Delete last")
+        delete_last_button.setMaximumWidth(80)
+        delete_last_button.clicked.connect(self.delete_last_message)
+        
+        hBoxLayout2 = QtWidgets.QHBoxLayout()
+        hBoxLayout2.addWidget(send_button)
+        hBoxLayout2.addWidget(regenerate_button)
+        hBoxLayout2.addWidget(delete_last_button)
 
         vBoxLayout1 = QtWidgets.QVBoxLayout()
         vBoxLayout1.addLayout(hBoxLayout1)
         vBoxLayout1.addWidget(self.chat_history_view)
         vBoxLayout1.addWidget(self.user_input)
-        vBoxLayout1.addWidget(self.send_button)
+        vBoxLayout1.addLayout(hBoxLayout2)
 
         self.script_reporter = cmds.cmdScrollFieldReporter(clr=True)
         script_reporter_ptr = OpenMayaUI.MQtUtil.findControl(self.script_reporter)
@@ -418,6 +462,16 @@ class ChatMaya(QtWidgets.QMainWindow):
             
             cmds.cmdScrollFieldExecuter(editor, e=True, t=self.code_list[int(item)-1])
 
+    def about(self, *args):
+        QtWidgets.QMessageBox.about(self, 'About ' + TITLE, ABOUT_TXT)
+
+    def closeEvent(self, event):
+        self.save_user_prefs()
+        self._exit_flag = True
+        self.statusBar().showMessage("Closing...")
+        self.executor.shutdown(wait=True)
+
+    # export
     def execute_script(self, *args):
         if self.script_type == "python":
             editor = self.script_editor_py
@@ -441,24 +495,18 @@ class ChatMaya(QtWidgets.QMainWindow):
             export_code_list = [self.code_list[index]]
         else:
             export_code_list = self.code_list
-        
+
         file_name_prefix = datetime.now().strftime('script_%H%M%S')
+        ext = '.py' if self.script_type == "python" else '.mel'
+
         for i, code in enumerate(export_code_list):
-            code_file_path = os.path.join(self.session_log_dir, '{}_{}.py'.format(file_name_prefix, str(i).zfill(2)))
+            code_file_path = os.path.join(self.session_log_dir, '{}_{}{}'.format(file_name_prefix, str(i).zfill(2), ext))
             try:
                 with open(code_file_path, 'w', encoding='utf-8-sig') as f:
                     f.writelines(code)
             except:
                 pass
 
-    def about(self, *args):
-        QtWidgets.QMessageBox.about(self, 'About ' + TITLE, ABOUT_TXT)
-
-    def closeEvent(self, event):
-        self.save_user_prefs()
-        self._exit_flag = True
-        self.statusBar().showMessage("Closing...")
-        self.executor.shutdown(wait=True)
 
 def showUI():
     ptr = OpenMayaUI.MQtUtil.mainWindow()
