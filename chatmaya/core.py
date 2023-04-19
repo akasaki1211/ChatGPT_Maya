@@ -2,6 +2,7 @@
 import os
 import json
 import re
+import copy
 import time
 from pathlib import Path
 from datetime import datetime
@@ -34,6 +35,14 @@ from .voice import VoiceGenerator
 
 DEFAULT_GEOMETORY = (400, 300, 900, 600)
 
+def maya_main_window():
+    main_window_ptr = OpenMayaUI.MQtUtil.mainWindow()
+    return wrapInstance(int(main_window_ptr), QtWidgets.QMainWindow)
+
+def showUI():
+    window = ChatMaya(parent=maya_main_window())
+    window.show()
+
 class ChatMaya(QtWidgets.QMainWindow):
 
     def __init__(self, parent=None, *args, **kwargs):
@@ -60,6 +69,8 @@ class ChatMaya(QtWidgets.QMainWindow):
         # User Prefs
         self.user_settings_ini = QtCore.QSettings(str(USER_SETTINGS_INI), QtCore.QSettings.IniFormat)
         self.user_settings_ini.setIniCodec('utf-8')
+        self.settings = Settings()
+        self.apply_settings(self.settings.get_settings())
 
         # Build UI
         self.init_ui()
@@ -232,11 +243,11 @@ class ChatMaya(QtWidgets.QMainWindow):
     def completion(self):
         
         result = openai.ChatCompletion.create(
-            model="gpt-3.5-turbo",
-            temperature=0.8,
-            top_p=1,
-            presence_penalty=0,
-            frequency_penalty=0,
+            model=self.completion_model,
+            temperature=self.completion_temperature,
+            top_p=self.completion_top_p,
+            presence_penalty=self.completion_presence_penalty,
+            frequency_penalty=self.completion_frequency_penalty,
             messages=self.messages, 
             stream=True
         )
@@ -258,12 +269,12 @@ class ChatMaya(QtWidgets.QMainWindow):
             wav_path = self.voice_generator.text2voice(text, 
                                 str(time.time()), 
                                 path=os.getenv('TEMP'), 
-                                speaker=47,
-                                speed=1.1,
-                                pitch=0,
-                                intonation=1, 
-                                volume=1,
-                                post=0.1)
+                                speaker=self.voice_speakerid,
+                                speed=self.voice_speed,
+                                pitch=self.voice_pitch,
+                                intonation=self.voice_intonation, 
+                                volume=self.voice_volume,
+                                post=self.voice_post)
         
             if wav_path:
                 self.q_voice_play.put(wav_path)
@@ -298,6 +309,36 @@ class ChatMaya(QtWidgets.QMainWindow):
         x, y, w, h = DEFAULT_GEOMETORY
         self.setGeometry(x, y, w, h)
     
+    def apply_settings(self, data:dict, *args):
+        try:
+            self.completion_model = data["completion"]["model"]
+            self.completion_temperature = float(data["completion"]["temperature"])
+            self.completion_top_p = float(data["completion"]["top_p"])
+            self.completion_presence_penalty = float(data["completion"]["presence_penalty"])
+            self.completion_frequency_penalty = float(data["completion"]["frequency_penalty"])
+            self.voice_speakerid = int(data["voice"]["speakerid"])
+            self.voice_speed = float(data["voice"]["speed"])
+            self.voice_pitch = float(data["voice"]["pitch"])
+            self.voice_intonation = float(data["voice"]["intonation"])
+            self.voice_volume = float(data["voice"]["volume"])
+            self.voice_post = float(data["voice"]["post"])
+        except:
+            self.completion_model = "gpt-3.5-turbo"
+            self.completion_temperature = 0.7
+            self.completion_top_p = 1
+            self.completion_presence_penalty = 0
+            self.completion_frequency_penalty = 0
+            self.voice_speakerid = 47
+            self.voice_speed = 1
+            self.voice_pitch = 0
+            self.voice_intonation = 1
+            self.voice_volume = 1
+            self.voice_post = 0.1
+
+    def open_settings_dialog(self, *args):
+        self.settings.update()
+        self.apply_settings(self.settings.get_settings())
+
     # UI
     def init_ui(self, *args):
         self.reset_user_prefs()
@@ -314,6 +355,9 @@ class ChatMaya(QtWidgets.QMainWindow):
         exitAction.triggered.connect(self.close)
 
         # Settings Action
+        settingsAction = QtWidgets.QAction('Open Settings Dialog', self)
+        settingsAction.triggered.connect(self.open_settings_dialog)
+
         leaveCodeblocksAction = QtWidgets.QAction('Leave codeblocks in chat area', self)
         leaveCodeblocksAction.setCheckable(True)
         leaveCodeblocksAction.setChecked(self.leave_codeblocks)
@@ -333,6 +377,8 @@ class ChatMaya(QtWidgets.QMainWindow):
         fileMenu.addAction(exitAction)
         
         settingsMenu = menuBar.addMenu("Settings")
+        settingsMenu.addAction(settingsAction)
+        settingsMenu.addSeparator()
         settingsMenu.addAction(leaveCodeblocksAction)
         
         helpMenu = menuBar.addMenu("Help")
@@ -517,9 +563,208 @@ class ChatMaya(QtWidgets.QMainWindow):
             except:
                 pass
 
+class Settings(object):
 
-def showUI():
-    ptr = OpenMayaUI.MQtUtil.mainWindow()
-    mayaMainWindow = wrapInstance(int(ptr), QtWidgets.QMainWindow)
-    window = ChatMaya(parent=mayaMainWindow)
-    window.show()
+    def __init__(self):
+        self.filepath = USER_SETTINGS_JSON
+        
+        self._data = self.__import_from_file()
+
+        if not self._data:
+            # default settings
+            self._data = {
+                "completion":{
+                    "model": "gpt-3.5-turbo",
+                    "temperature": 0.7,
+                    "top_p": 1.0,
+                    "presence_penalty": 0.0,
+                    "frequency_penalty": 0.0
+                },
+                "voice":{
+                    "speakerid": 47,
+                    "speed": 1.1,
+                    "pitch": 0.0,
+                    "intonation": 1.0,
+                    "volume": 1.0,
+                    "post": 0.1
+                }
+            }
+        
+        self.__export_file()
+
+    def get_settings(self, *args):
+        return copy.deepcopy(self._data)
+    
+    def update(self, *args):
+        data, accepted = SettingsDialog.set(parent=maya_main_window(), data=self._data)
+        
+        if not accepted:
+            return
+
+        self._data = data        
+        self.__export_file()
+
+    def __import_from_file(self, *args):
+        if not os.path.isfile(self.filepath):
+            return
+
+        try:
+            with open(self.filepath, 'r') as f:
+                data = json.load(f)
+            return data
+        except:
+            return
+
+    def __export_file(self, *args):
+        try:
+            with open(self.filepath, 'w', encoding='utf-8') as f:
+                json.dump(self._data, f, indent=4)
+            return True
+        except:
+            return
+
+class SettingsDialog(QtWidgets.QDialog):
+    
+    def __init__(self, parent=None, *args):
+        super(SettingsDialog, self).__init__(parent, *args)
+        self.data = {}
+    
+    def init_UI(self, *args):
+        self.setWindowTitle('Settings')
+        
+        # Completion Settings group
+        completion_group = QtWidgets.QGroupBox("Completion")
+        completion_layout = QtWidgets.QFormLayout(completion_group)
+
+        # model
+        self.model_edit = QtWidgets.QLineEdit(self)
+        self.model_edit.setMinimumWidth(100)
+        completion_layout.addRow("Model:", self.model_edit)
+
+        # temperature
+        self.temperature_spinbox = QtWidgets.QDoubleSpinBox(self)
+        self.temperature_spinbox.setRange(0.0, 2.0)
+        self.temperature_spinbox.setSingleStep(0.1)
+        self.temperature_spinbox.setMinimumWidth(100)
+        completion_layout.addRow("Temperature:", self.temperature_spinbox)
+
+        # top_p
+        self.top_p_spinbox = QtWidgets.QDoubleSpinBox(self)
+        self.top_p_spinbox.setRange(0.0, 2.0)
+        self.top_p_spinbox.setSingleStep(0.1)
+        self.top_p_spinbox.setMinimumWidth(100)
+        completion_layout.addRow("Top P:", self.top_p_spinbox)
+
+        # presence_penalty
+        self.presence_penalty_spinbox = QtWidgets.QDoubleSpinBox(self)
+        self.presence_penalty_spinbox.setRange(0.0, 2.0)
+        self.presence_penalty_spinbox.setSingleStep(0.1)
+        self.presence_penalty_spinbox.setMinimumWidth(100)
+        completion_layout.addRow("Presence Penalty:", self.presence_penalty_spinbox)
+
+        # frequency_penalty
+        self.frequency_penalty_spinbox = QtWidgets.QDoubleSpinBox(self)
+        self.frequency_penalty_spinbox.setRange(0.0, 2.0)
+        self.frequency_penalty_spinbox.setSingleStep(0.1)
+        self.frequency_penalty_spinbox.setMinimumWidth(100)
+        completion_layout.addRow("Frequency Penalty:", self.frequency_penalty_spinbox)
+        
+        # Voice Settings group
+        voice_group = QtWidgets.QGroupBox("Voice")
+        voice_layout = QtWidgets.QFormLayout(voice_group)
+
+        # speakerid
+        self.speakerid_spinbox = QtWidgets.QSpinBox(self)
+        self.speakerid_spinbox.setMinimumWidth(60)
+        voice_layout.addRow("Speaker ID:", self.speakerid_spinbox)
+
+        # speed
+        self.speed_spinbox = QtWidgets.QDoubleSpinBox(self)
+        self.speed_spinbox.setSingleStep(0.1)
+        self.speed_spinbox.setMinimumWidth(60)
+        voice_layout.addRow("Speed:", self.speed_spinbox)
+
+        # pitch
+        self.pitch_spinbox = QtWidgets.QDoubleSpinBox(self)
+        self.pitch_spinbox.setSingleStep(0.01)
+        self.pitch_spinbox.setMinimumWidth(60)
+        voice_layout.addRow("Pitch:", self.pitch_spinbox)
+
+        # intonation
+        self.intonation_spinbox = QtWidgets.QDoubleSpinBox(self)
+        self.intonation_spinbox.setSingleStep(0.1)
+        self.intonation_spinbox.setMinimumWidth(60)
+        voice_layout.addRow("Intonation:", self.intonation_spinbox)
+
+        # volume
+        self.volume_spinbox = QtWidgets.QDoubleSpinBox(self)
+        self.volume_spinbox.setSingleStep(0.1)
+        self.volume_spinbox.setMinimumWidth(60)
+        voice_layout.addRow("Volume:", self.volume_spinbox)
+
+        # post
+        self.post_spinbox = QtWidgets.QDoubleSpinBox(self)
+        self.post_spinbox.setSingleStep(0.1)
+        self.post_spinbox.setMinimumWidth(60)
+        voice_layout.addRow("Post:", self.post_spinbox)
+
+        # Buttons
+        buttons = QtWidgets.QDialogButtonBox(
+            QtWidgets.QDialogButtonBox.Ok | QtWidgets.QDialogButtonBox.Cancel,
+            QtCore.Qt.Horizontal,
+            self
+        )
+        buttons.accepted.connect(self.save_and_accept)
+        buttons.rejected.connect(self.reject)
+
+        settings_layout = QtWidgets.QHBoxLayout()
+        settings_layout.addWidget(completion_group)
+        settings_layout.addWidget(voice_group)
+        
+        main_layout = QtWidgets.QVBoxLayout(self)
+        main_layout.addLayout(settings_layout)
+        main_layout.addWidget(buttons)
+
+    def set_UI_values(self, *args):
+        try:
+            self.model_edit.setText(self.data["completion"]["model"])
+            self.temperature_spinbox.setValue(self.data["completion"]["temperature"])
+            self.top_p_spinbox.setValue(self.data["completion"]["top_p"])
+            self.presence_penalty_spinbox.setValue(self.data["completion"]["presence_penalty"])
+            self.frequency_penalty_spinbox.setValue(self.data["completion"]["frequency_penalty"])
+
+            self.speakerid_spinbox.setValue(self.data["voice"]["speakerid"])
+            self.speed_spinbox.setValue(self.data["voice"]["speed"])
+            self.pitch_spinbox.setValue(self.data["voice"]["pitch"])
+            self.intonation_spinbox.setValue(self.data["voice"]["intonation"])
+            self.volume_spinbox.setValue(self.data["voice"]["volume"])
+            self.post_spinbox.setValue(self.data["voice"]["post"])
+        except:
+            pass
+    
+    def save_and_accept(self):
+        self.data["completion"] = {}
+        self.data["voice"] = {}
+        self.data["completion"]["model"] = self.model_edit.text()
+        self.data["completion"]["temperature"] = self.temperature_spinbox.value()
+        self.data["completion"]["top_p"] = self.top_p_spinbox.value()
+        self.data["completion"]["presence_penalty"] = self.presence_penalty_spinbox.value()
+        self.data["completion"]["frequency_penalty"] = self.frequency_penalty_spinbox.value()
+        self.data["voice"]["speakerid"] = self.speakerid_spinbox.value()
+        self.data["voice"]["speed"] = self.speed_spinbox.value()
+        self.data["voice"]["pitch"] = self.pitch_spinbox.value()
+        self.data["voice"]["intonation"] = self.intonation_spinbox.value()
+        self.data["voice"]["volume"] = self.volume_spinbox.value()
+        self.data["voice"]["post"] = self.post_spinbox.value()
+
+        self.accept() 
+    
+    @staticmethod
+    def set(parent=None, data:dict={}, *args):
+        dialog = SettingsDialog(parent)
+        dialog.data = data
+        dialog.init_UI()
+        dialog.set_UI_values()
+        result = dialog.exec_()
+
+        return (dialog.data, result == QtWidgets.QDialog.Accepted)
