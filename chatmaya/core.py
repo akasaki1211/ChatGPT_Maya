@@ -54,6 +54,7 @@ class ChatMaya(QtWidgets.QMainWindow):
         # settings
         self.script_type = "python"
         self.last_user_message = ""
+        self.leave_codeblocks = False
         self.init_variables()
         
         # User Prefs
@@ -159,9 +160,10 @@ class ChatMaya(QtWidgets.QMainWindow):
         comment, self.code_list = self.decompose_response(message_text)
 
         # Pythonコード以外の部分を表示
-        self.chat_history_model.setData(
-                    self.chat_history_model.index(self.chat_history_model.rowCount() - 1), 
-                    comment)
+        if not self.leave_codeblocks:
+            self.chat_history_model.setData(
+                        self.chat_history_model.index(self.chat_history_model.rowCount() - 1), 
+                        comment)
         self.chat_history_view.scrollToBottom()
 
         # Scriptsプルダウンを更新
@@ -312,6 +314,11 @@ class ChatMaya(QtWidgets.QMainWindow):
         exitAction.triggered.connect(self.close)
 
         # Settings Action
+        leaveCodeblocksAction = QtWidgets.QAction('Leave codeblocks in chat area', self)
+        leaveCodeblocksAction.setCheckable(True)
+        leaveCodeblocksAction.setChecked(self.leave_codeblocks)
+        leaveCodeblocksAction.setStatusTip(u'コードブロックをチャット領域にも残しておく')
+        leaveCodeblocksAction.toggled.connect(self.toggle_leave_codeblocks)
         
         # About Action
         aboutAction = QtWidgets.QAction('About', self)
@@ -325,8 +332,8 @@ class ChatMaya(QtWidgets.QMainWindow):
         fileMenu.addSeparator()
         fileMenu.addAction(exitAction)
         
-        """ settingsMenu = menuBar.addMenu("Settings")
-        settingsMenu.addAction(voiceAction) """
+        settingsMenu = menuBar.addMenu("Settings")
+        settingsMenu.addAction(leaveCodeblocksAction)
         
         helpMenu = menuBar.addMenu("Help")
         helpMenu.addAction(aboutAction)
@@ -435,6 +442,9 @@ class ChatMaya(QtWidgets.QMainWindow):
         widget.setLayout(main_layout)
         self.setCentralWidget(widget)
     
+    def toggle_leave_codeblocks(self, flag, *args):
+        self.leave_codeblocks = flag
+
     def toggle_script_type(self, *args):
         if self.script_type_rbtn_1.isChecked():
             self.script_type = "python"
