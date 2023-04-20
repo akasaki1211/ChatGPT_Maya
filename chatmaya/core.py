@@ -8,6 +8,7 @@ from pathlib import Path
 from datetime import datetime
 from concurrent.futures import ThreadPoolExecutor
 import queue
+import keyboard
 
 import tiktoken
 import openai
@@ -56,6 +57,8 @@ class ChatMaya(QtWidgets.QMainWindow):
         self.q_voice_synthesis = queue.Queue()
         self.q_voice_play = queue.Queue()
 
+        self.__stop_completion = False
+
         # thread
         self.executor = ThreadPoolExecutor(max_workers=2)
         self.executor.submit(self.voice_synthesis_thread)
@@ -63,7 +66,7 @@ class ChatMaya(QtWidgets.QMainWindow):
 
         # settings
         self.script_type = "python"
-        self.last_user_message = ""
+        #self.last_user_message = ""
         self.leave_codeblocks = False
         self.max_total_token = 2500
         self.init_variables()
@@ -128,7 +131,7 @@ class ChatMaya(QtWidgets.QMainWindow):
         backquote_count = 0
         is_code_block = False
 
-        self.statusBar().showMessage("Completion...")
+        self.statusBar().showMessage("Completion... (Press Esc to stop)")
 
         # prompt tokens
         content_list = [msg["content"] for msg in self.messages]
@@ -145,6 +148,9 @@ class ChatMaya(QtWidgets.QMainWindow):
         # APIコール
         try:
             for content in self.completion():
+                if keyboard.is_pressed('esc'):
+                    self.__stop_completion = True
+                    break
                 message_text += content
                 self.chat_history_model.setData(
                     self.chat_history_model.index(self.chat_history_model.rowCount() - 1), 
@@ -174,9 +180,21 @@ class ChatMaya(QtWidgets.QMainWindow):
 
         except Exception as e:
             cmds.error(str(e))
+            self.messages.append({'role': 'assistant', 'content': ''})
+            self.chat_history_model.setData(
+                        self.chat_history_model.index(self.chat_history_model.rowCount() - 1), 
+                        '')
             return
         
         self.messages.append({'role': 'assistant', 'content': message_text})
+
+        # log出力
+        self.export_log()
+
+        # Escが押されたらここで終了
+        if self.__stop_completion:
+            self.statusBar().showMessage("Stop Completion.")
+            return
 
         # completion tokens
         completion_tokens = self.num_tokens_from_text(message_text)
@@ -189,6 +207,9 @@ class ChatMaya(QtWidgets.QMainWindow):
 
         # 返答を分解
         comment, self.code_list = self.decompose_response(message_text)
+
+        # スクリプト出力
+        self.export_scripts()
 
         # Pythonコード以外の部分を表示
         if not self.leave_codeblocks:
@@ -216,10 +237,6 @@ class ChatMaya(QtWidgets.QMainWindow):
             prompt_tokens + completion_tokens,
             self.total_tokens
         ))
-        #print("Log files : {}".format(self.session_log_dir))
-
-        self.export_log()
-        self.export_scripts()
 
     def send_message(self):
         user_message = self.user_input.toPlainText()
@@ -238,8 +255,9 @@ class ChatMaya(QtWidgets.QMainWindow):
             script_type="Maya Python" if self.script_type == "python" else "MEL", 
             questions=user_message)
         self.messages.append({"role": "user", "content": user_prompt})
-        self.last_user_message = user_message
+        #self.last_user_message = user_message
 
+        self.__stop_completion = False
         self.generate_message()
 
     def regenerate_message(self):
@@ -252,17 +270,19 @@ class ChatMaya(QtWidgets.QMainWindow):
         
         self.messages.pop(-1)
 
-        user_prompt = USER_TEMPLATE.format(
+        """ user_prompt = USER_TEMPLATE.format(
             script_type="Maya Python" if self.script_type == "python" else "MEL", 
             questions=self.last_user_message)
-        self.messages[-1] = {"role": "user", "content": user_prompt}
+        self.messages[-1] = {"role": "user", "content": user_prompt} """
 
+        self.__stop_completion = False
         self.generate_message()
 
     def delete_last_message(self):
         self.chat_history_model.removeRows(self.chat_history_model.rowCount() - 2, 2)
         self.messages.pop(-1)
         self.messages.pop(-1)
+        self.export_log()
 
     @retry_decorator
     def completion(self):
@@ -563,7 +583,6 @@ class ChatMaya(QtWidgets.QMainWindow):
     def closeEvent(self, event):
         self.save_user_prefs()
         self._exit_flag = True
-        self.statusBar().showMessage("Closing...")
         self.executor.shutdown(wait=True)
 
     # export
