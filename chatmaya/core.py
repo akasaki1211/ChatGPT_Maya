@@ -691,7 +691,7 @@ class SettingsDialog(QtWidgets.QDialog):
         self.setWindowTitle('Settings')
         
         # Completion Settings group
-        completion_group = QtWidgets.QGroupBox("Completion")
+        completion_group = QtWidgets.QGroupBox("ChatCompletion")
         completion_layout = QtWidgets.QFormLayout(completion_group)
 
         # model
@@ -731,7 +731,7 @@ class SettingsDialog(QtWidgets.QDialog):
         completion_layout.addRow("Frequency Penalty:", self.frequency_penalty_spinbox)
         
         # Voice Settings group
-        voice_group = QtWidgets.QGroupBox("Voice")
+        voice_group = QtWidgets.QGroupBox("VOICEVOX")
         voice_layout = QtWidgets.QFormLayout(voice_group)
 
         # speakerid

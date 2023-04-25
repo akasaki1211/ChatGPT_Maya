@@ -4,10 +4,12 @@ from pathlib import Path
 from maya import cmds
 
 TITLE = 'ChatMaya'
-VERSION = '1.1.0'
+VERSION = '1.1.1'
 
 ABOUT_TXT = """
-{}  {}
+{} {}
+
+Powerd by ChatGPT API.
 
 Supported Maya:
  Maya 2023 (Python3.9.7)
