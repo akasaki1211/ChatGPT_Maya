@@ -1,4 +1,4 @@
-# ChatGPT_Maya
+# ChatMaya
 MayaからChatGPT API（[gpt-3.5-turbo](https://platform.openai.com/docs/guides/chat)）を呼び出し、Python/MELスクリプトを生成・実行するGUIです。  
 [VOICEVOX ENGINE](https://github.com/VOICEVOX/voicevox_engine)が起動していると、同時に読み上げが行われます。  
 
