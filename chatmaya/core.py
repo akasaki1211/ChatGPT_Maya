@@ -74,7 +74,6 @@ class ChatMaya(QtWidgets.QMainWindow):
 
         # settings
         self.script_type = "python"
-        #self.last_user_message = ""
         self.last_error = None
         self.leave_codeblocks = False
         self.max_total_token = MAX_MESSAGES_TOKEN
@@ -93,7 +92,6 @@ class ChatMaya(QtWidgets.QMainWindow):
     def init_variables(self, *args):
         self.session_id = datetime.now().strftime('session_%y%m%d_%H%M%S')
         self.session_log_dir = Path(LOG_DIR / self.session_id)
-        #print("log dir : {}".format(self.session_log_dir))
 
         self.messages = [self.set_system_message(self.script_type)]
         self.code_list = []
@@ -302,11 +300,6 @@ class ChatMaya(QtWidgets.QMainWindow):
         
         self.messages.pop(-1)
 
-        """ user_prompt = USER_TEMPLATE.format(
-            script_type="Maya Python" if self.script_type == "python" else "MEL", 
-            questions=self.last_user_message)
-        self.messages[-1] = {"role": "user", "content": user_prompt} """
-
         self.__stop_completion = False
         self.generate_message()
 
@@ -315,29 +308,6 @@ class ChatMaya(QtWidgets.QMainWindow):
         self.messages.pop(-1)
         self.messages.pop(-1)
         self.export_log()
-
-    """ @retry_decorator
-    def completion(self):
-        
-        result = openai.ChatCompletion.create(
-            model=self.completion_model,
-            temperature=self.completion_temperature,
-            top_p=self.completion_top_p,
-            presence_penalty=self.completion_presence_penalty,
-            frequency_penalty=self.completion_frequency_penalty,
-            messages=self.messages, 
-            stream=True
-        )
-        
-        for chunk in result:
-            if chunk:
-                content = chunk['choices'][0]['delta'].get('content')
-                if content:
-                    yield content """
-
-    """ def num_tokens_from_text(self, text:str) -> int:
-        encoding = tiktoken.encoding_for_model(self.completion_model)
-        return len(encoding.encode(text)) """
     
     def shrink_messages(self, messages:list) -> list:
         messages.pop(1)
