@@ -1,4 +1,5 @@
-import json
+# -*- coding: utf-8 -*-
+from typing import List
 from tenacity import (
     retry,
     retry_if_exception_type,
@@ -7,6 +8,10 @@ from tenacity import (
 )
 
 import openai
+import tiktoken
+
+DEFAULT_CHAT_MODEL = "gpt-3.5-turbo"
+DEFAULT_ENCODING = "cl100k_base"
 
 MAX_ATTEMPT = 3 # リトライ回数
 MIN_SECONDS = 5 # 最小リトライ秒数
@@ -27,3 +32,24 @@ def retry_decorator(func):
             | retry_if_exception_type(openai.error.ServiceUnavailableError)
         )
     )(func)
+
+def num_tokens_from_text(text:str, encoding_name:str=DEFAULT_ENCODING) -> int:
+    encoding = tiktoken.get_encoding(encoding_name)
+    num_tokens = len(encoding.encode(text))
+    return num_tokens
+
+@retry_decorator
+def chat_completion_stream(messages:List, model:str=DEFAULT_CHAT_MODEL, **kwargs) -> str:
+        
+        result = openai.ChatCompletion.create(
+            model=model,
+            messages=messages,
+            stream=True,
+            **kwargs
+        )
+        
+        for chunk in result:
+            if chunk:
+                content = chunk['choices'][0]['delta'].get('content')
+                if content:
+                    yield content

@@ -15,3 +15,8 @@ USER_TEMPLATE = """Write a {script_type} script that can be executed in Maya to 
 
 # Questions:
 {questions}"""
+
+FIX_TEMPLATE = """実行したら以下のようなエラーが出ました。修復してください。
+
+# Error
+{error}"""

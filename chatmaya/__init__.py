@@ -3,13 +3,14 @@ import os
 
 from maya import cmds
 
-from . import info, core, prompts, retry, voice
-""" from importlib import reload
+from . import info, core, prompts, openai_utils, voice, exec_code
+from importlib import reload
 reload(info)
 reload(core)
 reload(prompts)
-reload(retry)
-reload(voice) """
+reload(openai_utils)
+reload(voice)
+reload(exec_code)
 
 def run():
     try:
