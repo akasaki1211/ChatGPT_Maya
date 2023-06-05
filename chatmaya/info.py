@@ -4,7 +4,7 @@ from pathlib import Path
 from maya import cmds
 
 TITLE = 'ChatMaya'
-VERSION = '1.2.0'
+VERSION = '1.2.1'
 
 ABOUT_TXT = """
 {} {}

@@ -30,7 +30,8 @@ from .prompts import (
 )
 from .openai_utils import (
     num_tokens_from_text, 
-    chat_completion_stream
+    chat_completion_stream,
+    DEFAULT_CHAT_MODEL
 )
 from .voice import (
     text2voice, 
@@ -82,6 +83,7 @@ class ChatMaya(QtWidgets.QMainWindow):
         # User Prefs
         self.user_settings_ini = QtCore.QSettings(str(USER_SETTINGS_INI), QtCore.QSettings.IniFormat)
         self.user_settings_ini.setIniCodec('utf-8')
+        self.completion_model = DEFAULT_CHAT_MODEL
         self.settings = Settings()
         self.apply_settings(self.settings.get_settings())
 
@@ -388,7 +390,6 @@ class ChatMaya(QtWidgets.QMainWindow):
         self.setGeometry(x, y, w, h)
     
     def apply_settings(self, data:SettingsData, *args):
-        self.completion_model = data.completion.model
         self.completion_temperature = float(data.completion.temperature)
         self.completion_top_p = float(data.completion.top_p)
         self.completion_presence_penalty = float(data.completion.presence_penalty)
@@ -453,6 +454,11 @@ class ChatMaya(QtWidgets.QMainWindow):
         self.statusBar().showMessage("Ready.")
 
         # chat
+        chat_model_cbx = QtWidgets.QComboBox()
+        chat_model_cbx.addItems(['gpt-3.5-turbo', 'gpt-4'])
+        chat_model_cbx.setCurrentText(DEFAULT_CHAT_MODEL)
+        chat_model_cbx.currentTextChanged.connect(self.change_model)
+
         new_button = QtWidgets.QPushButton('New Chat')
         new_button.clicked.connect(self.new_chat)
 
@@ -471,8 +477,11 @@ class ChatMaya(QtWidgets.QMainWindow):
         hBoxLayout1 = QtWidgets.QHBoxLayout()
         hBoxLayout1.addWidget(new_button)
         hBoxLayout1.addWidget(log_dir_button)
-        hBoxLayout1.addWidget(self.script_type_rbtn_1)
-        hBoxLayout1.addWidget(self.script_type_rbtn_2)
+        
+        hBoxLayout3 = QtWidgets.QHBoxLayout()
+        hBoxLayout3.addWidget(chat_model_cbx)
+        hBoxLayout3.addWidget(self.script_type_rbtn_1)
+        hBoxLayout3.addWidget(self.script_type_rbtn_2)
 
         # chat history
         self.chat_history_model = QtCore.QStringListModel()
@@ -509,6 +518,7 @@ class ChatMaya(QtWidgets.QMainWindow):
         hBoxLayout2.addWidget(delete_last_button)
 
         vBoxLayout1 = QtWidgets.QVBoxLayout()
+        vBoxLayout1.addLayout(hBoxLayout3)
         vBoxLayout1.addLayout(hBoxLayout1)
         vBoxLayout1.addWidget(self.chat_history_view)
         vBoxLayout1.addWidget(self.user_input)
@@ -564,6 +574,9 @@ class ChatMaya(QtWidgets.QMainWindow):
         widget.setLayout(main_layout)
         self.setCentralWidget(widget)
     
+    def change_model(self, text, *args):
+        self.completion_model = text
+
     def toggle_leave_codeblocks(self, flag, *args):
         self.leave_codeblocks = flag
 

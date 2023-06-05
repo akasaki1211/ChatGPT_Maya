@@ -6,10 +6,8 @@ from pydantic import BaseModel
 from PySide2 import QtWidgets, QtCore
 
 from .info import USER_SETTINGS_JSON
-from .openai_utils import DEFAULT_CHAT_MODEL
 
 class CompletionSettings(BaseModel):
-    model :str = DEFAULT_CHAT_MODEL
     temperature :float = 0.7
     top_p :float = 1.0
     presence_penalty :float = 0.0
@@ -30,7 +28,6 @@ class SettingsData(BaseModel):
     @classmethod
     def from_dict(cls, dict:Dict):
         completion_settings = CompletionSettings(
-            model = dict["completion"]["model"],
             temperature = dict["completion"]["temperature"],
             top_p = dict["completion"]["top_p"],
             presence_penalty = dict["completion"]["presence_penalty"],
@@ -53,7 +50,6 @@ class SettingsData(BaseModel):
     def to_dict(self) -> Dict:
         return {
             "completion": {
-                "model": self.completion.model,
                 "temperature": self.completion.temperature,
                 "top_p": self.completion.top_p,
                 "presence_penalty": self.completion.presence_penalty,
@@ -126,14 +122,6 @@ class SettingsDialog(QtWidgets.QDialog):
         # Completion Settings group
         completion_group = QtWidgets.QGroupBox("ChatCompletion")
         completion_layout = QtWidgets.QFormLayout(completion_group)
-
-        # model
-        self.model_combobox = QtWidgets.QComboBox()
-        self.model_combobox.addItem("gpt-3.5-turbo")
-        self.model_combobox.addItem("gpt-4")
-        self.model_combobox.setMinimumWidth(100)
-        
-        completion_layout.addRow("Model:", self.model_combobox)
 
         # temperature
         self.temperature_spinbox = QtWidgets.QDoubleSpinBox(self)
@@ -226,7 +214,6 @@ class SettingsDialog(QtWidgets.QDialog):
 
     def set_UI_values(self, *args):
         try:
-            self.model_combobox.setCurrentText(self._data.completion.model)
             self.temperature_spinbox.setValue(self._data.completion.temperature)
             self.top_p_spinbox.setValue(self._data.completion.top_p)
             self.presence_penalty_spinbox.setValue(self._data.completion.presence_penalty)
@@ -242,7 +229,6 @@ class SettingsDialog(QtWidgets.QDialog):
             pass
     
     def save_and_accept(self):
-        self._data.completion.model = self.model_combobox.currentText()
         self._data.completion.temperature = round(self.temperature_spinbox.value(), 2)
         self._data.completion.top_p = round(self.top_p_spinbox.value(), 2)
         self._data.completion.presence_penalty = round(self.presence_penalty_spinbox.value(), 2)
