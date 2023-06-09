@@ -1,5 +1,5 @@
 # ChatMaya
-MayaからChatGPT API（[gpt-3.5-turbo](https://platform.openai.com/docs/guides/chat)）を呼び出し、Python/MELスクリプトを生成・実行するGUIです。  
+MayaからChatGPT API（[gpt-3.5-turbo / gpt-4](https://platform.openai.com/docs/guides/chat)）を呼び出し、Python/MELスクリプトを生成・実行するGUIです。  
 [VOICEVOX ENGINE](https://github.com/VOICEVOX/voicevox_engine)が起動していると、同時に読み上げが行われます。  
 
 ![example1](.images/example1.png)
@@ -49,11 +49,8 @@ chatmaya.run()
 * New Chatを押すかウィンドウを閉じるまでは、会話履歴が残ります。（※概算トークン数が一定数を超えると古い履歴から削られていきます。）
 * ログ、設定ファイル、書いてもらったスクリプトファイルは随時、`C:\Users\<ユーザー名>\Documents\maya\ChatMaya`に出力されています。
 * 別途[VOICEVOX ENGINE](https://github.com/VOICEVOX/voicevox_engine)が起動していると、自動的にコードブロック以外の部分の読み上げが行われます。使用する場合はGPUモード推奨です。
-* Settings > Open Settings Dialog より各種設定値を変更できます。
+* Settings > Open Settings Dialog より各種設定値を変更できます。  
     ![settings](.images/settings.png)
-    > **Warning**  
-    > Model:`gpt-4`を選べるようになっていますが、動作確認は一切出来ていません。
-
 
 ## アンインストール
 batでインストールしている場合、以下のフォルダを削除すればアンインストールされます。  
