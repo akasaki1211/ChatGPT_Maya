@@ -31,7 +31,8 @@ from .prompts import (
 from .openai_utils import (
     num_tokens_from_text, 
     chat_completion_stream,
-    DEFAULT_CHAT_MODEL
+    DEFAULT_CHAT_MODEL,
+    CHAT_MODELS
 )
 from .voice import (
     text2voice, 
@@ -455,7 +456,7 @@ class ChatMaya(QtWidgets.QMainWindow):
 
         # chat
         chat_model_cbx = QtWidgets.QComboBox()
-        chat_model_cbx.addItems(['gpt-3.5-turbo', 'gpt-4'])
+        chat_model_cbx.addItems(CHAT_MODELS)
         chat_model_cbx.setCurrentText(DEFAULT_CHAT_MODEL)
         chat_model_cbx.currentTextChanged.connect(self.change_model)
 

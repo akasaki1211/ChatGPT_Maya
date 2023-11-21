@@ -8,6 +8,7 @@ MayaからChatGPT API（[gpt-3.5-turbo / gpt-4](https://platform.openai.com/docs
 > * Windows 10/11
 > * Maya 2023 (Python3.9.7)
 > * Maya 2024 (Python3.10.8)
+> * openai-python v1.3.3
 
 ## インストール
 1. [Account API Keys - OpenAI API](https://platform.openai.com/account/api-keys)よりAPI Keyを取得し、環境変数`OPENAI_API_KEY`に設定する  
